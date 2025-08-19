@@ -239,6 +239,8 @@ class RingState:
         - fidelity : Fidelity of the noisy density matrix and blank state.
         """
 
+        time_start = time.time()
+
         qc = qiskit_circuit_solver(Stabilizer(edgelist=self.orderings[index]))
 
         for emitter in range(self.nodes, qc.num_qubits):
@@ -257,10 +259,10 @@ class RingState:
         for emitter in range(self.nodes, qc.num_qubits):
             noise_model.add_quantum_error(z_error, "h", [emitter])
     
-        simulation = AerSimulator(method='density_matrix', noise_model=noise_model)
-        qc = qiskit.transpile(qc, simulation)
+        simulator = AerSimulator(method='density_matrix', noise_model=noise_model)
+        #qc = qiskit.transpile(qc, simulator)
         
-        result = simulation.run(qc).result()
+        result = simulator.run(qc).result()
 
         dens_mat = result.data(0)["density_matrix"]
 
@@ -269,6 +271,8 @@ class RingState:
         blank_state = qiskit.quantum_info.Statevector(blank_state)
 
         fidelity = qiskit.quantum_info.state_fidelity(blank_state, dens_mat)
+
+        print("Time taken (qiskit):", round((time.time()-time_start) * 1000, 3), "ms")
 
         return result, fidelity
 
