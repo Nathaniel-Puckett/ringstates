@@ -7,6 +7,14 @@ dependencies:
   - python
   - pip
 
+    # Dependencies
+  - networkx
+  - numpy
+  - matplotlib
+  - photonic_circuit_solver
+  - qiskit
+  - qiskit_aer
+
     # Testing
   - pytest
   - pytest-cov
