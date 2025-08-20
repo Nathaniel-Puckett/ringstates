@@ -109,9 +109,11 @@ class RingState:
         print("Time taken (all orderings):", round((time.time()-time_start) * 1000, 3), "ms")
 
     def add_ordering(self, ordering:list):
-
+        """
+        Adds an ordering to the list of orderings
+        """
+        
         self.orderings.append(ordering)
-
 
     def generate_data(self, ordering:list, index:int):
         """ 
@@ -243,8 +245,10 @@ class RingState:
 
         qc = qiskit_circuit_solver(Stabilizer(edgelist=self.orderings[index]))
 
+        #sets ancilla 0 to computational 0 state
         for emitter in range(self.nodes, qc.num_qubits):
             qc.measure(emitter, 0)
+        #inverse of generation circuit
         for edge in self.orderings[index]:
             qc.cz(edge[0], edge[1])
         for photon in range(len(self.orderings[index])):
@@ -254,10 +258,13 @@ class RingState:
             qc.measure(photon, photon+1)
 
         z_error = pauli_error([("Z", probability), ("I", 1 - probability)])
+        identity = pauli_error([("I", 1)])
+        z_error_cx = z_error.tensor(z_error) #target, control
 
         noise_model = NoiseModel()
         for emitter in range(self.nodes, qc.num_qubits):
             noise_model.add_quantum_error(z_error, "h", [emitter])
+        noise_model.add_all_qubit_quantum_error(z_error_cx, "cx")
     
         simulator = AerSimulator(method='density_matrix', noise_model=noise_model)
         #qc = qiskit.transpile(qc, simulator)
