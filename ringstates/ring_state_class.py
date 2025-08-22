@@ -131,9 +131,10 @@ class RingState:
         qcd = dict(qc.count_ops())
         num_cnot = qcd.get('cx') - self.nodes
         num_hadamard = qcd.get('h')
+        num_phase = qcd.get('s') if qcd.get('s') else 0
         depth = qc.depth()
         emitters = qc.num_qubits - self.nodes
-        ordering_data = [["Index", index], ["# CNOT", num_cnot], ["# Hadamard", num_hadamard], ["# Emitter", emitters], ["Depth", depth]]
+        ordering_data = [["Index", index], ["# CNOT", num_cnot], ["# Hadamard", num_hadamard], ["# Phase", num_phase], ["# Emitter", emitters], ["Depth", depth]]
         
         return ordering_data
 
@@ -168,11 +169,13 @@ class RingState:
             if index == 0:
                 l_index = index
             else:
+                #need to refine checks
                 cnot_check = ord_data[1][1] < self.data[l_index][1][1]
                 hadamard_check = ord_data[1][1] == self.data[l_index][1][1] and ord_data[2][1] < self.data[l_index][2][1]
-                depth_check = ord_data[1][1] == self.data[l_index][1][1] and ord_data[2][1] == self.data[l_index][2][1] and ord_data[4][1] < self.data[l_index][4][1]
+                phase_check = ord_data[1][1] == self.data[l_index][1][1] and ord_data[2][1] == self.data[l_index][2][1] and ord_data[3][1] < self.data[l_index][3][1]
+                depth_check = ord_data[1][1] == self.data[l_index][1][1] and ord_data[2][1] == self.data[l_index][2][1] and ord_data[3][1] == self.data[l_index][3][1] and ord_data[5][1] < self.data[l_index][5][1]
                 
-                if cnot_check or hadamard_check or depth_check:
+                if cnot_check or hadamard_check or phase_check or depth_check:
                     print("Previous lowest index :", l_index, "| New lowest index :", index)
                     l_index = index
                 
@@ -264,6 +267,7 @@ class RingState:
         noise_model = NoiseModel()
         for emitter in range(self.nodes, qc.num_qubits):
             noise_model.add_quantum_error(z_error, "h", [emitter])
+            noise_model.add_quantum_error(z_error, "s", [emitter])
         noise_model.add_all_qubit_quantum_error(z_error_cx, "cx")
     
         simulator = AerSimulator(method='density_matrix', noise_model=noise_model)
