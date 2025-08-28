@@ -1,23 +1,25 @@
 import copy as cp
-import itertools
+import itertools as iter
 import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
-from photonic_circuit_solver import *
+
 import random
 import time
 import qiskit
+
 from collections import Counter
 from math import factorial
+from photonic_circuit_solver import *
 from qiskit_aer import AerSimulator
-from qiskit_aer.noise import NoiseModel, pauli_error
+from qiskit_aer.noise import NoiseModel, QuantumError, pauli_error
 
 class RingState:
     """
     Class for working with and storing information about an n node ring state.
     """
 
-    def __init__(self, nodes:int):
+    def __init__(self, nodes:int, timer:bool = False):
         """
         Initializes class.
 
@@ -28,6 +30,7 @@ class RingState:
         self.nodes = nodes
         self.orderings = list()
         self.data = list()
+        self.timer = timer
     
     def __getitem__(self, index:int):
         """
@@ -62,7 +65,7 @@ class RingState:
 
         self.orderings = list()
 
-        permutations = [list(perm) for perm in itertools.permutations(range(self.nodes)[1:], self.nodes - 1)]
+        permutations = [list(perm) for perm in iter.permutations(range(self.nodes)[1:], self.nodes - 1)]
         for permutation in permutations:
             if permutation[0] == self.nodes-1: #reflective symmetry check 1
                 break
@@ -76,7 +79,7 @@ class RingState:
                     ordering.append(edge)
                 self.orderings.append(ordering)
         
-        print("Time taken (all orderings):", round((time.time()-time_start) * 1000, 3), "ms")
+        print(f"Time taken (orderings): {round((time.time()-time_start) * 1000, 3)} ms") if self.timer else None
 
     def get_random_orderings(self, num_orderings:int):
         """
@@ -106,7 +109,7 @@ class RingState:
                     ordering.append(edge)
                 self.orderings.append(ordering)
         
-        print("Time taken (all orderings):", round((time.time()-time_start) * 1000, 3), "ms")
+        print(f"Time taken (orderings): {round((time.time()-time_start) * 1000, 3)} ms") if self.timer else None
 
     def add_ordering(self, ordering:list):
         """
@@ -129,12 +132,19 @@ class RingState:
 
         qc = qiskit_circuit_solver(Stabilizer(edgelist=ordering))
         qcd = dict(qc.count_ops())
-        num_cnot = qcd.get('cx') - self.nodes
+        num_cnot = qcd.get('cx') - self.nodes #only counts cnots between emitters
         num_hadamard = qcd.get('h')
         num_phase = qcd.get('s') if qcd.get('s') else 0
         depth = qc.depth()
         emitters = qc.num_qubits - self.nodes
-        ordering_data = [["Index", index], ["# CNOT", num_cnot], ["# Hadamard", num_hadamard], ["# Phase", num_phase], ["# Emitter", emitters], ["Depth", depth]]
+        ordering_data = [
+            ["Index", index], 
+            ["# CNOT", num_cnot], 
+            ["# Hadamard", num_hadamard], 
+            ["# Phase", num_phase], 
+            ["# Emitter", emitters], 
+            ["Depth", depth]
+            ]
         
         return ordering_data
 
@@ -176,7 +186,7 @@ class RingState:
                 depth_check = ord_data[1][1] == self.data[l_index][1][1] and ord_data[2][1] == self.data[l_index][2][1] and ord_data[3][1] == self.data[l_index][3][1] and ord_data[5][1] < self.data[l_index][5][1]
                 
                 if cnot_check or hadamard_check or phase_check or depth_check:
-                    print("Previous lowest index :", l_index, "| New lowest index :", index)
+                    print(f"Previous lowest index : {l_index} | New lowest index : {index}")
                     l_index = index
                 
             self.data.append(ord_data)
@@ -185,7 +195,7 @@ class RingState:
         self.lowest_qc = qiskit_circuit_solver(Stabilizer(edgelist=self.orderings[l_index]))
         self.lowest_index = l_index
 
-        print("Time taken (lowest):", round((time.time()-time_start) * 1000, 3), "ms")
+        print(f"Time taken (lowest): {round((time.time()-time_start) * 1000, 3)} ms") if self.timer else None
 
         return l_index
     
@@ -231,13 +241,13 @@ class RingState:
         plt.ylabel(plot_data[0][y_index][0])
         plt.show()
 
-    def qiskit_noise_analysis(self, index:int, probability:float):
+    def qiskit_noise_analysis(self, index:int, P_large:float):
         """
         Simple error analysis for a given ordering's qiskit circuit.
 
         Parameters:
         - index : Index of ordering to analyze.
-        - probability : The probability that a z error will occur.
+        - P_large : The probability that an error after an cnot between emitters occurs
 
         Returns:
         - result : Dictionary with relevant data on simulation.
@@ -246,6 +256,10 @@ class RingState:
 
         time_start = time.time()
 
+        if P_large > 0.5:
+            print("Input lower probability value")
+            return (None, None)
+            
         qc = qiskit_circuit_solver(Stabilizer(edgelist=self.orderings[index]))
 
         #sets ancilla 0 to computational 0 state
@@ -260,30 +274,42 @@ class RingState:
         for photon in range(len(self.orderings[index])):
             qc.measure(photon, photon+1)
 
-        z_error = pauli_error([("Z", probability), ("I", 1 - probability)])
-        identity = pauli_error([("I", 1)])
-        z_error_cx = z_error.tensor(z_error) #target, control
+        #categorizes probability by gate time
+        T_ratio = 0.1
+        P_small = 0.5 * (1 - (1 - 2 * P_large) ** T_ratio) #probability for single qubit gates & emissions
+
+        hadamard_error = pauli_error([("X", P_small), ("I", 1 - P_small)]) #z propagated past hadamard
+        phase_error = pauli_error([("Y", P_small), ("I", 1 - P_small)]) #z propagated past phase
+        emission_cx_error = pauli_error([("IZ", P_small), ("II", 1 - P_small)]) #z originating on control
+        emitter_cx_error = pauli_error([("IZ", P_large), ("II", 1 - P_large)]) #z originating on control
 
         noise_model = NoiseModel()
+
         for emitter in range(self.nodes, qc.num_qubits):
-            noise_model.add_quantum_error(z_error, "h", [emitter])
-            noise_model.add_quantum_error(z_error, "s", [emitter])
-        noise_model.add_all_qubit_quantum_error(z_error_cx, "cx")
+            noise_model.add_quantum_error(hadamard_error, "h", [emitter])
+            noise_model.add_quantum_error(phase_error, "s", [emitter])
+            for photon in range(self.nodes):
+                noise_model.add_quantum_error(emission_cx_error, "cx", [emitter, photon])
+
+        if qc.num_qubits - self.nodes >= 2:
+            emitter_combos = iter.permutations(range(self.nodes, qc.num_qubits), 2)
+            for combo in emitter_combos:
+                noise_model.add_quantum_error(emitter_cx_error, "cx", combo)
     
         simulator = AerSimulator(method='density_matrix', noise_model=noise_model)
         #qc = qiskit.transpile(qc, simulator)
         
         result = simulator.run(qc).result()
 
-        dens_mat = result.data(0)["density_matrix"]
+        noisy_density_matrix = result.data(0)["density_matrix"]
 
         blank_state = [0] * 2 ** qc.num_qubits
         blank_state[0] = 1
         blank_state = qiskit.quantum_info.Statevector(blank_state)
 
-        fidelity = qiskit.quantum_info.state_fidelity(blank_state, dens_mat)
+        fidelity = qiskit.quantum_info.state_fidelity(blank_state, noisy_density_matrix)
 
-        print("Time taken (qiskit):", round((time.time()-time_start) * 1000, 3), "ms")
+        print(f"Time taken (qiskit): {round((time.time()-time_start) * 1000, 3)} ms") if self.timer else None
 
         return result, fidelity
 
