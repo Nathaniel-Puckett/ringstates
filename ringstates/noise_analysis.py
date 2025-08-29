@@ -8,60 +8,64 @@ from qiskit_aer import AerSimulator
 from qiskit_aer.noise import NoiseModel, pauli_error
 
 
-def noise_analysis(num_photons:int, ordering:list, probability:float):
+def noise_analysis(num_photons:int, ordering:list, prob_cnot:float):
     """
     Simple error analysis for a given ordering's qiskit circuit.
 
     Parameters:
-    - ordering : Graph state edgelist
-    - P_large : The probability that an error after an cnot between emitters occurs
+    - num_photons : Number of photons used in graph state
+    - ordering : Graph state edgelist (Photon index must start at 0)
+    - probability : Probability for a cnot error
 
     Returns:
     - result : Dictionary with relevant data on simulation.
     - fidelity : Fidelity of the noisy density matrix and blank state.
+    - qc : Qiskit circuit
     """
 
     time_start = time.time()
 
-    if probability > 0.5:
+    if prob_cnot > 0.5:
         print("Input lower probability value")
         return (None, None)
         
     qc = qiskit_circuit_solver(Stabilizer(edgelist=ordering))
+    photons = range(num_photons)
+    emitters = range(num_photons, qc.num_qubits)
 
     #sets ancilla 0 to computational 0 state
-    for emitter in range(num_photons, qc.num_qubits):
+    for emitter in emitters:
         qc.measure(emitter, 0)
     #inverse of generation circuit
     for edge in ordering:
         qc.cz(edge[0], edge[1])
-    for photon in range(num_photons):
+    for photon in photons:
         qc.h(photon)
     qc.save_state()
-    for photon in range(num_photons):
+    for photon in photons:
         qc.measure(photon, photon+1)
 
     noise_model = NoiseModel()
 
     #categorizes probability by gate time
     T_ratio = 0.1
-    P_small = 0.5 * (1 - (1 - 2 * probability) ** T_ratio) #probability for single qubit gates & emissions
+    prob_single = 0.5 * (1 - (1 - 2 * prob_cnot) ** T_ratio) #probability for single qubit gates & emissions
 
-    hadamard_error = pauli_error([("X", P_small), ("I", 1 - P_small)]) #z propagated past hadamard
-    phase_error = pauli_error([("Y", P_small), ("I", 1 - P_small)]) #z propagated past phase
-    emission_cx_error = pauli_error([("IZ", P_small), ("II", 1 - P_small)]) #z originating on control
-    emitter_cx_error = pauli_error([("IZ", probability), ("II", 1 - probability)]) #z originating on control
+    hadamard_error =    pauli_error([("X", prob_single), ("I", 1 - prob_single)]) #z propagated past hadamard
+    phase_error =       pauli_error([("Y", prob_single), ("I", 1 - prob_single)]) #z propagated past phase
+    emission_cx_error = pauli_error([("IZ", prob_single), ("II", 1 - prob_single)]) #z originating on control
+    emitter_cx_error =  pauli_error([("IZ", prob_cnot), ("II", 1 - prob_cnot)]) #z originating on control
 
-    for emitter in range(num_photons, qc.num_qubits):
+    for emitter in emitters:
         noise_model.add_quantum_error(hadamard_error, "h", [emitter])
         noise_model.add_quantum_error(phase_error, "s", [emitter])
-        for photon in range(num_photons):
+        for photon in photons:
             noise_model.add_quantum_error(emission_cx_error, "cx", [emitter, photon])
 
-    if qc.num_qubits - num_photons >= 2:
-        emitter_combos = iter.permutations(range(num_photons, qc.num_qubits), 2)
-        for combo in emitter_combos:
-            noise_model.add_quantum_error(emitter_cx_error, "cx", combo)
+    if len(emitters) >= 2:
+        emitter_perms = iter.permutations(emitters, 2)
+        for perm in emitter_perms:
+            noise_model.add_quantum_error(emitter_cx_error, "cx", perm)
 
     simulator = AerSimulator(method='density_matrix', noise_model=noise_model)
     #qc = qiskit.transpile(qc, simulator)

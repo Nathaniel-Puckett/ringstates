@@ -173,6 +173,7 @@ class RingState:
 
         for ordering in self.orderings[0:max]:
             ord_data = self.generate_data(ordering, index)
+            
             if index == 0:
                 l_index = index
             else:
