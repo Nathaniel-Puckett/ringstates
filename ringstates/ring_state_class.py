@@ -139,8 +139,8 @@ class RingState:
             ["# CNOT", num_cnot], 
             ["# Hadamard", num_hadamard], 
             ["# Phase", num_phase], 
-            ["# Emitter", emitters], 
-            ["Depth", depth]
+            ["Depth", depth], 
+            ["# Emitter", emitters]
             ]
         
         return ordering_data
@@ -176,16 +176,16 @@ class RingState:
             
             if index == 0:
                 l_index = index
+                l_data = ord_data
             else:
-                #need to refine checks
-                cnot_check = ord_data[1][1] < self.data[l_index][1][1]
-                hadamard_check = ord_data[1][1] == self.data[l_index][1][1] and ord_data[2][1] < self.data[l_index][2][1]
-                phase_check = ord_data[1][1] == self.data[l_index][1][1] and ord_data[2][1] == self.data[l_index][2][1] and ord_data[3][1] < self.data[l_index][3][1]
-                depth_check = ord_data[1][1] == self.data[l_index][1][1] and ord_data[2][1] == self.data[l_index][2][1] and ord_data[3][1] == self.data[l_index][3][1] and ord_data[5][1] < self.data[l_index][5][1]
-                
-                if cnot_check or hadamard_check or phase_check or depth_check:
-                    print(f"Previous lowest index : {l_index} | New lowest index : {index}")
-                    l_index = index
+                for i in range(1, 5):
+                    if ord_data[i][1] < l_data[i][1]:
+                        l_index = index
+                        l_data = ord_data
+                        print(f"Previous lowest index : {l_index} | New lowest index : {index}")
+                        break
+                    elif ord_data[i][1] > l_data[i][1]:
+                        break
                 
             self.data.append(ord_data)
             index += 1
