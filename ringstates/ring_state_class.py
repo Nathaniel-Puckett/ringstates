@@ -4,13 +4,12 @@ import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
 
-import random
 import time
-import qiskit
 
 from collections import Counter
 from math import factorial
 from photonic_circuit_solver import *
+from random import shuffle
 
 class RingState:
     """
@@ -96,7 +95,7 @@ class RingState:
 
         while len(self.orderings) < num_orderings:
             rd_permutation = list(range(self.nodes)[1:])
-            random.shuffle(rd_permutation)
+            shuffle(rd_permutation)
             if rd_permutation[0] > rd_permutation[-1] or rd_permutation[0] == self.nodes-1: #reflective symmetry check
                 pass
             else:
