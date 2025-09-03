@@ -7,8 +7,7 @@ from photonic_circuit_solver import *
 from qiskit_aer import AerSimulator
 from qiskit_aer.noise import NoiseModel, pauli_error
 
-
-def noise_analysis(num_photons:int, ordering:list, prob_cnot:float):
+def noise_analysis(num_photons:int, ordering:list, prob_cnot:float, method:str = "density_matrix"):
     """
     Simple error analysis for a given ordering's qiskit circuit.
 
@@ -41,9 +40,11 @@ def noise_analysis(num_photons:int, ordering:list, prob_cnot:float):
         qc.cz(edge[0], edge[1])
     for photon in photons:
         qc.h(photon)
-    qc.save_state()
-    for photon in photons:
-        qc.measure(photon, photon+1)
+    if method == "density_matrix":
+        qc.save_state()
+    else:
+        for photon in photons:
+            qc.measure(photon, photon+1)
 
     noise_model = NoiseModel()
 
@@ -67,18 +68,24 @@ def noise_analysis(num_photons:int, ordering:list, prob_cnot:float):
         for perm in emitter_perms:
             noise_model.add_quantum_error(emitter_cx_error, "cx", perm)
 
-    simulator = AerSimulator(method='density_matrix', noise_model=noise_model)
-    #qc = qiskit.transpile(qc, simulator)
+    simulator = AerSimulator(method=method, noise_model=noise_model)
+    simulator.set_option("shots", 1) if method == "density_matrix" else None
     
     result = simulator.run(qc).result()
 
-    noisy_density_matrix = result.data(0)["density_matrix"]
+    if method == "density_matrix":
+        noisy_density_matrix = result.data(0)["density_matrix"]
 
-    blank_state = [0] * 2 ** qc.num_qubits
-    blank_state[0] = 1
-    blank_state = qiskit.quantum_info.Statevector(blank_state)
+        blank_state = [0] * 2 ** qc.num_qubits
+        blank_state[0] = 1
+        blank_state = qiskit.quantum_info.Statevector(blank_state)
 
-    fidelity = qiskit.quantum_info.state_fidelity(blank_state, noisy_density_matrix)
+        fidelity = qiskit.quantum_info.state_fidelity(blank_state, noisy_density_matrix)
+    
+    else:
+        counts = result.get_counts(qc)
+        blank_counts = counts['0'*qc.num_qubits]
+        fidelity = blank_counts / sum(list(counts.values()))
 
     print(f"Time taken (qiskit): {round((time.time()-time_start) * 1000, 3)} ms")
 
