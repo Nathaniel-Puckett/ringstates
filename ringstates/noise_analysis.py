@@ -7,7 +7,7 @@ from photonic_circuit_solver import *
 from qiskit_aer import AerSimulator
 from qiskit_aer.noise import NoiseModel, pauli_error
 
-def noise_analysis(num_photons:int, ordering:list, prob_cnot:float, method:str = "density_matrix"):
+def noise_analysis(num_photons:int, ordering:list, prob_cnot:float, method:str = "density_matrix", shots:int=1024, timer:bool = False):
     """
     Simple error analysis for a given ordering's qiskit circuit.
 
@@ -69,7 +69,7 @@ def noise_analysis(num_photons:int, ordering:list, prob_cnot:float, method:str =
             noise_model.add_quantum_error(emitter_cx_error, "cx", perm)
 
     simulator = AerSimulator(method=method, noise_model=noise_model)
-    simulator.set_option("shots", 1) if method == "density_matrix" else None
+    simulator.set_option("shots", 1 if method == "density_matrix" else shots)
     
     result = simulator.run(qc).result()
 
@@ -84,10 +84,14 @@ def noise_analysis(num_photons:int, ordering:list, prob_cnot:float, method:str =
     
     else:
         counts = result.get_counts(qc)
-        blank_counts = counts['0'*qc.num_qubits]
+        try:
+            blank_counts = counts['0'*qc.num_qubits]
+        except:
+            blank_counts = 0
+
         fidelity = blank_counts / sum(list(counts.values()))
 
-    print(f"Time taken (qiskit): {round((time.time()-time_start) * 1000, 3)} ms")
+    print(f"Time taken (qiskit): {round((time.time()-time_start) * 1000, 3)} ms") if timer else None
 
     return result, fidelity, qc
 

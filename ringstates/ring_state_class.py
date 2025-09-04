@@ -180,9 +180,9 @@ class RingState:
             else:
                 for i in range(1, 5):
                     if ord_data[i][1] < l_data[i][1]:
+                        print(f"Previous lowest index : {l_index} | New lowest index : {index}")
                         l_index = index
                         l_data = ord_data
-                        print(f"Previous lowest index : {l_index} | New lowest index : {index}")
                         break
                     elif ord_data[i][1] > l_data[i][1]:
                         break
@@ -234,6 +234,7 @@ class RingState:
         plt.scatter(coords[:,0], coords[:,1], s=list(size.values()))
         plt.xlabel(plot_data[0][x_index][0])
         plt.ylabel(plot_data[0][y_index][0])
+        plt.title(f"{self.nodes} Ring State Data")
         plt.show()
 
 if __name__ == "__main__":
