@@ -7,7 +7,7 @@ from photonic_circuit_solver import *
 from qiskit_aer import AerSimulator
 from qiskit_aer.noise import NoiseModel, pauli_error
 
-def noise_analysis(num_photons:int, ordering:list, prob_cnot:float, method:str = "density_matrix", shots:int=1024, timer:bool = False):
+def noise_analysis(num_photons:int, ordering:list, prob_cnot:float, T_ratio:float, method:str = "density_matrix", shots:int=1024, timer:bool = False):
     """
     Simple error analysis for a given ordering's qiskit circuit.
 
@@ -25,8 +25,7 @@ def noise_analysis(num_photons:int, ordering:list, prob_cnot:float, method:str =
     time_start = time.time()
 
     if prob_cnot > 0.5:
-        print("Input lower probability value")
-        return (None, None)
+        raise ValueError("Input lower probability value (<=0.5)")
         
     qc = qiskit_circuit_solver(Stabilizer(edgelist=ordering))
     photons = range(num_photons)
@@ -49,7 +48,6 @@ def noise_analysis(num_photons:int, ordering:list, prob_cnot:float, method:str =
     noise_model = NoiseModel()
 
     #categorizes probability by gate time
-    T_ratio = 0.1
     prob_single = 0.5 * (1 - (1 - 2 * prob_cnot) ** T_ratio) #probability for single qubit gates & emissions
 
     hadamard_error =    pauli_error([("X", prob_single), ("I", 1 - prob_single)]) #z propagated past hadamard

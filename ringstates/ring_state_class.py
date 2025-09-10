@@ -40,12 +40,7 @@ class RingState:
         - self.orderings[index] : Ordering at index, returns none if an ordering does not exist at the index.
         """
 
-        #checks if there are orderings, if not, generates them
-        try:
-            return self.orderings[index]
-        except:
-            print("Index out of range")
-            return None
+        return self.orderings[index]
     
     def get_all_orderings(self):
         """
@@ -236,7 +231,3 @@ class RingState:
         plt.ylabel(plot_data[0][y_index][0])
         plt.title(f"{self.nodes} Ring State Data")
         plt.show()
-
-if __name__ == "__main__":
-    # Do something if this file is invoked on its own
-    None
