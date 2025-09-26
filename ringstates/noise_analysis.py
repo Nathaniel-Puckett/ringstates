@@ -7,7 +7,7 @@ from photonic_circuit_solver import *
 from qiskit_aer import AerSimulator
 from qiskit_aer.noise import NoiseModel, pauli_error
 
-def noise_analysis(num_photons:int, ordering:list, prob_cnot:float, T_ratio:float, method:str = "density_matrix", shots:int=1024, timer:bool = False):
+def noise_analysis(num_photons:int, ordering:list, prob_cnot:float, T_ratio:float, method:str="density_matrix", shots:int=1024, timer:bool=False):
     """
     Simple error analysis for a given ordering's qiskit circuit.
 
@@ -22,7 +22,7 @@ def noise_analysis(num_photons:int, ordering:list, prob_cnot:float, T_ratio:floa
     - qc : Qiskit circuit
     """
 
-    time_start = time.time()
+    time_start = time.perf_counter()
 
     if prob_cnot > 0.5:
         raise ValueError("Input lower probability value (<=0.5)")
@@ -50,10 +50,10 @@ def noise_analysis(num_photons:int, ordering:list, prob_cnot:float, T_ratio:floa
     #categorizes probability by gate time
     prob_single = 0.5 * (1 - (1 - 2 * prob_cnot) ** T_ratio) #probability for single qubit gates & emissions
 
-    hadamard_error =    pauli_error([("X", prob_single), ("I", 1 - prob_single)]) #z propagated past hadamard
-    phase_error =       pauli_error([("Y", prob_single), ("I", 1 - prob_single)]) #z propagated past phase
+    hadamard_error = pauli_error([("X", prob_single), ("I", 1 - prob_single)]) #z propagated past hadamard
+    phase_error = pauli_error([("Y", prob_single), ("I", 1 - prob_single)]) #z propagated past phase
     emission_cx_error = pauli_error([("IZ", prob_single), ("II", 1 - prob_single)]) #z originating on control
-    emitter_cx_error =  pauli_error([("IZ", prob_cnot), ("II", 1 - prob_cnot)]) #z originating on control
+    emitter_cx_error = pauli_error([("IZ", prob_cnot), ("II", 1 - prob_cnot)]) #z originating on control
 
     for emitter in emitters:
         noise_model.add_quantum_error(hadamard_error, "h", [emitter])
@@ -88,8 +88,10 @@ def noise_analysis(num_photons:int, ordering:list, prob_cnot:float, T_ratio:floa
             blank_counts = 0
 
         fidelity = blank_counts / sum(list(counts.values()))
+    
+    time_end = time.perf_counter()
 
-    print(f"Time taken (qiskit): {round((time.time()-time_start) * 1000, 3)} ms") if timer else None
+    print(f"Time taken (qiskit): {round((time_end-time_start) * 1000, 3)} ms") if timer else None
 
     return result, fidelity, qc
 

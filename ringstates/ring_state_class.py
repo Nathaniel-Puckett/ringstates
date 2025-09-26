@@ -1,4 +1,3 @@
-import copy as cp
 import itertools as iter
 import networkx as nx
 import numpy as np
@@ -7,8 +6,9 @@ import matplotlib.pyplot as plt
 import time
 
 from collections import Counter
+from copy import deepcopy
 from math import factorial
-from photonic_circuit_solver import *
+from photonic_circuit_solver import Stabilizer, qiskit_circuit_solver
 from random import shuffle
 
 class RingState:
@@ -16,7 +16,7 @@ class RingState:
     Class for working with and storing information about an n node ring state.
     """
 
-    def __init__(self, nodes:int, timer:bool = False):
+    def __init__(self, nodes:int, timer:bool=False):
         """
         Initializes class.
 
@@ -53,7 +53,7 @@ class RingState:
             Each ordering is created using the form [0, 1], [1, 2], ... [n-1, 0].
         """
 
-        time_start = time.time()
+        time_start = time.perf_counter()
 
         self.orderings = list()
 
@@ -70,8 +70,10 @@ class RingState:
                     edge = [permutation[i], permutation[i+1]] if i != self.nodes-1 else [permutation[i], permutation[0]] 
                     ordering.append(edge)
                 self.orderings.append(ordering)
+            
+        time_end = time.perf_counter()
         
-        print(f"Time taken (orderings): {round((time.time()-time_start) * 1000, 3)} ms") if self.timer else None
+        print(f"Time taken (orderings): {round((time_end-time_start) * 1000, 3)} ms") if self.timer else None
 
     def get_random_orderings(self, num_orderings:int):
         """
@@ -81,7 +83,7 @@ class RingState:
         - num_orderings : The number of random orderings to generate.
         """
         
-        time_start = time.time()
+        time_start = time.perf_counter()
 
         self.orderings = list()
 
@@ -100,8 +102,10 @@ class RingState:
                     edge = [rd_permutation[i], rd_permutation[i+1]] if i != self.nodes-1 else [rd_permutation[i], rd_permutation[0]] 
                     ordering.append(edge)
                 self.orderings.append(ordering)
+
+        time_end = time.perf_counter()
         
-        print(f"Time taken (orderings): {round((time.time()-time_start) * 1000, 3)} ms") if self.timer else None
+        print(f"Time taken (orderings): {round((time_end-time_start) * 1000, 3)} ms") if self.timer else None
 
     def add_ordering(self, ordering:list):
         """
@@ -156,17 +160,15 @@ class RingState:
         - l_index : Index of the ordering containing the least number of CNOTs, Hadamards, and depth.
         """
 
-        time_start = time.time()
+        time_start = time.perf_counter()
 
         #checks if there are orderings, if not, generates them
         self.get_all_orderings() if not self.orderings else None
 
         #checks if a maximum value is specified to search up to, default is all orderings
-        max = len(self.orderings) if not max else max
+        max = len(self.orderings) if max is None else max
 
-        index = 0
-
-        for ordering in self.orderings[0:max]:
+        for index, ordering in enumerate(self.orderings[0:max]):
             ord_data = self.generate_data(ordering, index)
             
             if index == 0:
@@ -183,9 +185,10 @@ class RingState:
                         break
                 
             self.data.append(ord_data)
-            index += 1
+        
+        time_end = time.perf_counter()
 
-        print(f"Time taken (lowest): {round((time.time()-time_start) * 1000, 3)} ms") if self.timer else None
+        print(f"Time taken (lowest): {round((time_end-time_start) * 1000, 3)} ms") if self.timer else None
 
         return l_index
     
@@ -214,7 +217,7 @@ class RingState:
         - y_index : The index of the values to use for the y axis.
         """
 
-        plot_data = cp.deepcopy(self.data)
+        plot_data = deepcopy(self.data)
         plot_data = np.array(plot_data)
 
         x_data = [int(i) for i in plot_data[:,x_index][:,1]]
