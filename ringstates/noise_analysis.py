@@ -1,20 +1,27 @@
 import itertools as iter
 
 import time
-import qiskit
 
-from photonic_circuit_solver import *
+from photonic_circuit_solver import Stabilizer, qiskit_circuit_solver
+from qiskit.quantum_info import Statevector, state_fidelity
 from qiskit_aer import AerSimulator
 from qiskit_aer.noise import NoiseModel, pauli_error
 
-def noise_analysis(num_photons:int, ordering:list, prob_cnot:float, T_ratio:float, method:str="density_matrix", shots:int=1024, timer:bool=False):
+def noise_analysis(num_photons:int, ordering:list, prob_cnot:float, 
+                   T_ratio:float, method:str="density_matrix", 
+                   shots:int=1024, timer:bool=False):
     """
     Simple error analysis for a given ordering's qiskit circuit.
 
     Parameters:
     - num_photons : Number of photons used in graph state
     - ordering : Graph state edgelist (Photon index must start at 0)
-    - probability : Probability for a cnot error
+    - prob_cnot : Probability for an error to occur after a CNOT
+    - T_ratio : Ratio of single qubit gate time to CNOT gate time
+    - method : Method for simulating the circuit, matrix_product_state is faster but noisy,
+               density_matrix is slower but accurate
+    - shots : Number of times to run the circuit for matrix_product_state method
+    - timer : Time taken to complete function
 
     Returns:
     - result : Dictionary with relevant data on simulation.
@@ -76,9 +83,9 @@ def noise_analysis(num_photons:int, ordering:list, prob_cnot:float, T_ratio:floa
 
         blank_state = [0] * 2 ** qc.num_qubits
         blank_state[0] = 1
-        blank_state = qiskit.quantum_info.Statevector(blank_state)
+        blank_state = Statevector(blank_state)
 
-        fidelity = qiskit.quantum_info.state_fidelity(blank_state, noisy_density_matrix)
+        fidelity = state_fidelity(blank_state, noisy_density_matrix)
     
     else:
         counts = result.get_counts(qc)

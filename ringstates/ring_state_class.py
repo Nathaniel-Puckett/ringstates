@@ -22,6 +22,7 @@ class RingState:
 
         Parameters:
         - nodes : Number of nodes the graph state contains.
+        - timer : Times each method, used for optimizing
         """
 
         self.nodes = nodes
@@ -110,6 +111,9 @@ class RingState:
     def add_ordering(self, ordering:list):
         """
         Adds an ordering to the list of orderings
+
+        Parameters:
+        - ordering : Node ordering to use
         """
         
         self.orderings.append(ordering)
