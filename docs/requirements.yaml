@@ -2,18 +2,23 @@ name: docs_RingStates
 channels:
   - conda-forge
   - defaults
-
 dependencies:
     # Base depends
-  - python
   - pip
+  - python
 
     # Package depends
   - numpy
   - matplotlib
 
+    # Sphinx depends
+  - pydata-sphinx-theme
+  - sphinx-design
+  - sphinx-copybutton
+
     # Pip-only installs
   - pip:
+    - -e ../
     - networkx
     - photonic_circuit_solver
     - qiskit

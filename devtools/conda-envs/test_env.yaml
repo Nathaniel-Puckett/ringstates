@@ -1,6 +1,6 @@
 name: test
 channels:
-
+  - conda-forge
   - defaults
 dependencies:
     # Base depends
@@ -8,12 +8,8 @@ dependencies:
   - pip
 
     # Dependencies
-  - networkx
   - numpy
   - matplotlib
-  - photonic_circuit_solver
-  - qiskit
-  - qiskit_aer
 
     # Testing
   - pytest
@@ -21,6 +17,8 @@ dependencies:
   - codecov
 
     # Pip-only installs
-  #- pip:
-  #  - codecov
-
+  - pip:
+    - networkx
+    - photonic_circuit_solver
+    - qiskit
+    - qiskit_aer
