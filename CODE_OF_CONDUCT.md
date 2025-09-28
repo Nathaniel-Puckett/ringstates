@@ -57,7 +57,7 @@ project may be further defined and clarified by project maintainers.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported by contacting the project team at 'napnathanielallenpuckett@gmail.com'. The project team will
+reported by contacting the project team at 'nathanielp2004@vt.edu'. The project team will
 review and investigate all complaints, and will respond in a way that it deems
 appropriate to the circumstances. The project team is obligated to maintain
 confidentiality with regard to the reporter of an incident. Further details of
@@ -69,9 +69,7 @@ members of the project's leadership.
 
 ## Attribution
 
-This Code of Conduct is adapted from the [Contributor Covenant][homepage],
+This Code of Conduct is adapted from the [Contributor Covenant](http://contributor-covenant.org),
 version 1.4, available at
-[http://contributor-covenant.org/version/1/4][version]
+[http://contributor-covenant.org/version/1/4](http://contributor-covenant.org/version/1/4/)
 
-[homepage]: http://contributor-covenant.org
-[version]: http://contributor-covenant.org/version/1/4/

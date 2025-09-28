@@ -10,7 +10,7 @@ description = "Ring state generation and analysis"
 dynamic = ["version"]
 readme = "README.md"
 authors = [
-    { name = "Nathaniel Puckett", email = "napnathanielallenpuckett@gmail.com" }
+    { name = "Nathaniel Puckett", email = "nathanielp2004@vt.edu" }
 ]
 license = "MIT"
 license-files = ["LICENSE"]

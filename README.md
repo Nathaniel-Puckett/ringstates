@@ -1,8 +1,8 @@
 RingStates
 ==============================
 [//]: # (Badges)
-[![GitHub Actions Build Status](https://github.com/REPLACE_WITH_OWNER_ACCOUNT/ringstates/workflows/CI/badge.svg)](https://github.com/REPLACE_WITH_OWNER_ACCOUNT/ringstates/actions?query=workflow%3ACI)
-[![codecov](https://codecov.io/gh/REPLACE_WITH_OWNER_ACCOUNT/RingStates/branch/main/graph/badge.svg)](https://codecov.io/gh/REPLACE_WITH_OWNER_ACCOUNT/RingStates/branch/main)
+[![GitHub Actions Build Status](https://github.com/Nathaniel-Puckett/ringstates/workflows/CI/badge.svg)](https://github.com/Nathaniel-Puckett/ringstates/actions?query=workflow%3ACI)
+[![codecov](https://codecov.io/gh/Nathaniel-Puckett/RingStates/branch/main/graph/badge.svg)](https://codecov.io/gh/Nathaniel-Puckett/RingStates/branch/main)
 
 
 Ring state generation and analysis

@@ -4,4 +4,5 @@ API Documentation
 .. autosummary::
    :toctree: autosummary
 
-   ringstates.canvas
+   ringstates.ring_state_class
+   ringstates.noise_analysis
