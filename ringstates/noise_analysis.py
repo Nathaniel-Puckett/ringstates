@@ -1,5 +1,4 @@
 import itertools as iter
-
 import time
 
 from photonic_circuit_solver import Stabilizer, qiskit_circuit_solver
@@ -7,32 +6,46 @@ from qiskit.quantum_info import Statevector, state_fidelity
 from qiskit_aer import AerSimulator
 from qiskit_aer.noise import NoiseModel, pauli_error
 
-def noise_analysis(num_photons:int, ordering:list, prob_cnot:float, 
-                   T_ratio:float, method:str="density_matrix", 
-                   shots:int=1024, timer:bool=False):
+
+def noise_analysis(num_photons: int, ordering: list[list[int]], prob_cnot: float, 
+                   T_ratio: float, method: str = "density_matrix", 
+                   shots: int = 1024, timer: bool = False):
     """
     Simple error analysis for a given ordering's qiskit circuit.
 
-    Parameters:
-    - num_photons : Number of photons used in graph state
-    - ordering : Graph state edgelist (Photon index must start at 0)
-    - prob_cnot : Probability for an error to occur after a CNOT
-    - T_ratio : Ratio of single qubit gate time to CNOT gate time
-    - method : Method for simulating the circuit, matrix_product_state is faster but noisy,
-               density_matrix is slower but accurate
-    - shots : Number of times to run the circuit for matrix_product_state method
-    - timer : Time taken to complete function
+    Parameters
+    ----------
+    num_photons : int
+        Number of photons used in graph state
+    ordering : list[list[int]]
+        Graph state edgelist, index starts at 0
+    prob_cnot : float
+        Probability for an error to occur after a CNOT
+    T_ratio : float
+        Ratio of single qubit gate time to CNOT gate time
+    method : str
+        Method for simulating the circuit, matrix_product_state is faster but noisy, 
+        density_matrix (default) is slower but accurate
+    shots : int
+        Number of times to run the circuit for matrix_product_state method, default is
+        1024 shots
+    timer : bool
+        Times each function, used for optimizing, defaults to false.
 
-    Returns:
-    - result : Dictionary with relevant data on simulation.
-    - fidelity : Fidelity of the noisy density matrix and blank state.
-    - qc : Qiskit circuit
+    Returns
+    -------
+    result : dict
+        Dictionary with relevant data on simulation.
+    fidelity : float
+        Fidelity of the noisy density matrix and blank state.
+    qc : 
+        Qiskit circuit
     """
 
-    time_start = time.perf_counter()
-
     if prob_cnot > 0.5:
-        raise ValueError("Input lower probability value (<=0.5)")
+        raise ValueError("Input lower probability value (p <= 0.5)")
+
+    time_start = time.perf_counter()
         
     qc = qiskit_circuit_solver(Stabilizer(edgelist=ordering))
     photons = range(num_photons)
@@ -81,7 +94,7 @@ def noise_analysis(num_photons:int, ordering:list, prob_cnot:float,
     if method == "density_matrix":
         noisy_density_matrix = result.data(0)["density_matrix"]
 
-        blank_state = [0] * 2 ** qc.num_qubits
+        blank_state = [0] * 2**qc.num_qubits
         blank_state[0] = 1
         blank_state = Statevector(blank_state)
 

@@ -2,7 +2,6 @@ import itertools as iter
 import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
-
 import time
 
 from collections import Counter
@@ -11,54 +10,54 @@ from math import factorial
 from photonic_circuit_solver import Stabilizer, qiskit_circuit_solver
 from random import shuffle
 
+
 class RingState:
     """
-    Class for working with and storing information about an n node ring state.
+    Class for working with an n ring state in the context of photonic quantum computing.
     """
 
-    def __init__(self, nodes:int, timer:bool=False):
+    def __init__(self, nodes: int, timer: bool = False):
         """
-        Initializes class.
-
-        Parameters:
-        - nodes : Number of nodes the graph state contains.
-        - timer : Times each method, used for optimizing
+        Parameters
+        ----------
+        nodes : int
+            Number of nodes the graph state contains.
+        timer : bool
+            Times each method, used for optimizing, defaults to false.
         """
 
         self.nodes = nodes
         self.orderings = list()
         self.data = list()
         self.timer = timer
-    
-    def __getitem__(self, index:int):
+
+    def __getitem__(self, index: int) -> list[list[int]]:
         """
         Returns ordering at index.
 
-        Parameters:
-        - index : Index of desired ordering from list of unique orderings.
+        Parameters
+        ----------
+        index : int
+            Index of desired ordering from list of unique orderings.
 
-        Returns:
-        - self.orderings[index] : Ordering at index, returns none if an ordering does not exist at the index.
+        Returns
+        -------
+        self.orderings[index] : list[list[int]]
+            Ordering at index, returns none if an ordering does not exist at the index.
         """
 
         return self.orderings[index]
-    
-    def get_all_orderings(self):
+
+    def get_all_orderings(self) -> None:
         """
         Generates all possible orderings for the ring state.
-        
-        Explaination:
-            Generates all permutations of 1 through n-1, prepending each permuation with 0.
-            If a permutation's first nonzero element is greater than the last element, it has already been 
-            processed, and is equivalent to some element in the list of orderings.
-            Each ordering is created using the form [0, 1], [1, 2], ... [n-1, 0].
         """
 
         time_start = time.perf_counter()
 
         self.orderings = list()
 
-        permutations = [list(perm) for perm in iter.permutations(range(self.nodes)[1:], self.nodes - 1)]
+        permutations = [list(perm) for perm in iter.permutations(range(self.nodes)[1:], self.nodes-1)]
         for permutation in permutations:
             if permutation[0] == self.nodes-1: #reflective symmetry check 1
                 break
@@ -66,22 +65,21 @@ class RingState:
                 pass
             else:
                 permutation.insert(0, 0)
-                ordering = []
-                for i in range(self.nodes):
-                    edge = [permutation[i], permutation[i+1]] if i != self.nodes-1 else [permutation[i], permutation[0]] 
-                    ordering.append(edge)
+                ordering = [[permutation[i], permutation[i+1]] for i in range(self.nodes-1)]
+                ordering.append([permutation[-1], permutation[0]])
                 self.orderings.append(ordering)
-            
-        time_end = time.perf_counter()
         
+        time_end = time.perf_counter()
         print(f"Time taken (orderings): {round((time_end-time_start) * 1000, 3)} ms") if self.timer else None
 
-    def get_random_orderings(self, num_orderings:int):
+    def get_random_orderings(self, num_orderings: int) -> None:
         """
         Generates a number of possible orderings for the ring state.
         
-        Parameters:
-        - num_orderings : The number of random orderings to generate.
+        Parameters
+        ----------
+        num_orderings : int
+            The number of random orderings to generate.
         """
         
         time_start = time.perf_counter()
@@ -92,85 +90,80 @@ class RingState:
             num_orderings = factorial(self.nodes-1) / 2
 
         while len(self.orderings) < num_orderings:
-            rd_permutation = list(range(self.nodes)[1:])
-            shuffle(rd_permutation)
-            if rd_permutation[0] > rd_permutation[-1] or rd_permutation[0] == self.nodes-1: #reflective symmetry check
+            permutation = list(range(self.nodes)[1:])
+            shuffle(permutation)
+            if permutation[0]>permutation[-1] or permutation[0]==self.nodes-1: #reflective symmetry check
                 pass
             else:
-                rd_permutation.insert(0, 0)
-                ordering = []
-                for i in range(self.nodes):
-                    edge = [rd_permutation[i], rd_permutation[i+1]] if i != self.nodes-1 else [rd_permutation[i], rd_permutation[0]] 
-                    ordering.append(edge)
+                permutation.insert(0, 0)
+                ordering = [[permutation[i], permutation[i+1]] for i in range(self.nodes-1)]
+                ordering.append([permutation[-1], permutation[0]])
                 self.orderings.append(ordering)
 
         time_end = time.perf_counter()
-        
         print(f"Time taken (orderings): {round((time_end-time_start) * 1000, 3)} ms") if self.timer else None
 
-    def add_ordering(self, ordering:list):
+    def add_ordering(self, ordering: list[list[int]]) -> None:
         """
         Adds an ordering to the list of orderings
 
-        Parameters:
-        - ordering : Node ordering to use
+        Parameters
+        ----------
+        ordering : list[list[int]]
+            Node ordering to use
         """
         
         self.orderings.append(ordering)
 
-    def generate_data(self, ordering:list, index:int):
+    def generate_data(self, ordering: list[list[int]], index: int) -> list[list]:
         """ 
         Generates relevant data for a given ordering.
 
-        Parameters:
-        - ordering : Node ordering to use.
-        - index : Index of ordering.
+        Parameters
+        ----------
+        ordering : list[list[int]]
+            Node ordering to use.
+        index : int
+            Index of ordering.
 
-        Returns:
-        - ordering_data : Nested list containing relevant data.
+        Returns
+        -------
+        ordering_data : list[list]
+            Nested list containing relevant data.
         """
 
         qc = qiskit_circuit_solver(Stabilizer(edgelist=ordering))
         qcd = dict(qc.count_ops())
-        num_cnot = qcd.get('cx') - self.nodes #only counts cnots between emitters
-        num_hadamard = qcd.get('h')
-        num_phase = qcd.get('s') if qcd.get('s') else 0
-        depth = qc.depth()
-        emitters = qc.num_qubits - self.nodes
         ordering_data = [
             ["Index", index], 
-            ["# CNOT", num_cnot], 
-            ["# Hadamard", num_hadamard], 
-            ["# Phase", num_phase], 
-            ["Depth", depth], 
-            ["# Emitter", emitters]
+            ["# CNOT", (qcd.get('cx') - self.nodes) if qcd.get('cx') else 0], 
+            ["# Hadamard", qcd.get('h') if qcd.get('h') else 0], 
+            ["# Phase", qcd.get('s') if qcd.get('s') else 0], 
+            ["Depth", qc.depth()], 
+            ["# Emitter", qc.num_qubits - self.nodes]
             ]
         
         return ordering_data
 
-    def get_lowest(self, max=None):
+    def get_lowest(self, max: int = 0) -> int:
         """ 
         Finds the ordering with the least number of CNOTs and Hadamards and the lowest depth.
-        
-        Explaination:
-            Does a simple search across all orderings, creating a qiskit circuit for each and counting
-            the number of CNOTs and Hadamards it consists of. All circuits contain a number of cnots
-            equal to the number of nodes, so they are not accounted for.
 
-        Parameters:
-        - max : Maximum index to search up to.
+        Parameters
+        ----------
+        max : int
+            Maximum index to search up to, default value is 0 (all indices).
 
-        Returns:
-        - l_index : Index of the ordering containing the least number of CNOTs, Hadamards, and depth.
+        Returns
+        -------
+        l_index : int
+            Index of the ordering containing the least number of CNOTs, Hadamards, and depth.
         """
 
         time_start = time.perf_counter()
 
-        #checks if there are orderings, if not, generates them
         self.get_all_orderings() if not self.orderings else None
-
-        #checks if a maximum value is specified to search up to, default is all orderings
-        max = len(self.orderings) if max is None else max
+        max = len(self.orderings) if not max else max
 
         for index, ordering in enumerate(self.orderings[0:max]):
             ord_data = self.generate_data(ordering, index)
@@ -191,34 +184,41 @@ class RingState:
             self.data.append(ord_data)
         
         time_end = time.perf_counter()
-
         print(f"Time taken (lowest): {round((time_end-time_start) * 1000, 3)} ms") if self.timer else None
 
         return l_index
-    
-    def nx_plot(self, index:int):
+
+    def nx_plot(self, index: int) -> nx.Graph:
         """
         Plots the ordering at index as a networkx graph.
 
-        Parameters:
-        - index : The index of the ordering to use.
+        Parameters
+        ----------
+        index : int
+            The index of the ordering to use.
 
-        Returns:
-        - G : Networkx graph of ring state at index.
+        Returns
+        -------
+        G : nx.Graph
+            Networkx graph of ring state at index.
         """
 
         G = nx.Graph()
         G.add_nodes_from(range(self.nodes))
         G.add_edges_from(self.orderings[index])
+        
         return G
 
-    def plot_data(self, x_index:int=1, y_index:int=2):
+    def plot_data(self, x_index: int = 1, y_index: int = 2) -> None:
         """
         Plots data from two indicies as a pyplot.
 
-        Parameters:
-        - x_index : The index of the values to use for the x axis.
-        - y_index : The index of the values to use for the y axis.
+        Parameters
+        ----------
+        x_index : int
+            The index of the values to use for the x axis.
+        y_index : int
+            The index of the values to use for the y axis.
         """
 
         plot_data = deepcopy(self.data)
