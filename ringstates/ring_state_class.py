@@ -188,9 +188,9 @@ class RingState:
 
         return l_index
 
-    def nx_plot(self, index: int) -> nx.Graph:
+    def graph(self, index: int) -> nx.Graph:
         """
-        Plots the ordering at index as a networkx graph.
+        Returns the networkx graph for the ordering at index.
 
         Parameters
         ----------
@@ -209,7 +209,26 @@ class RingState:
         
         return G
 
-    def plot_data(self, x_index: int = 1, y_index: int = 2) -> None:
+    def circuit(self, index: int):
+        """
+        Returns the circuit for the ordering at index.
+
+        Parameters
+        ----------
+        index : int
+            The index of the ordering to use.
+
+        Returns
+        -------
+        qc : qiskit circuit
+            Circuit representation of ring state at index.
+        """
+
+        qc = qiskit_circuit_solver(Stabilizer(edgelist=self.orderings[index]))
+
+        return qc
+
+    def plot(self, x_index: int = 1, y_index: int = 2):
         """
         Plots data from two indicies as a pyplot.
 
