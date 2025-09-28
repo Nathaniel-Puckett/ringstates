@@ -1,4 +1,6 @@
 import itertools as iter
+import matplotlib.pyplot as plt
+import numpy as np
 import time
 
 from photonic_circuit_solver import Stabilizer, qiskit_circuit_solver
@@ -113,8 +115,26 @@ def noise_analysis(num_photons: int, ordering: list[list[int]], prob_cnot: float
 
     print(f"Time taken (qiskit): {round((time_end-time_start) * 1000, 3)} ms") if timer else None
 
-    return result, fidelity, qc
+    return result, fidelity
 
-if __name__ == "__main__":
-    # Do something if this file is invoked on its own
-    None
+
+def contour_plot(num_photons, ordering, 
+                 t_max, t_int, p_max, p_int):
+
+    ratios = np.round(np.arange(0, t_max+t_int, t_int), 6)
+    probs = np.round(np.arange(0, p_max+p_int, p_int), 6)
+
+    data = []
+    for t in ratios:
+        fidelities = []
+        for p in probs:
+            result, fidelity = noise_analysis(num_photons, ordering, p, t)
+            fidelities.append(round(fidelity, 3))
+        data.append(fidelities)
+
+    plt.contourf(probs, ratios, data, levels=list(np.arange(0, 1.1, 0.1)))
+    plt.xlabel("Probability of CNOT Error")
+    plt.ylabel("T[Single] / T[CNOT]")
+    plt.title(f"Fidelities of a {num_photons} Ring State")
+    plt.colorbar()
+    plt.show()

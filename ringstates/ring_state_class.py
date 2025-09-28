@@ -228,7 +228,7 @@ class RingState:
 
         return qc
 
-    def plot(self, x_index: int = 1, y_index: int = 2):
+    def scatterplot(self, x_index: int, y_index: int):
         """
         Plots data from two indicies as a pyplot.
 
