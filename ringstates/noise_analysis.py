@@ -118,8 +118,27 @@ def noise_analysis(num_photons: int, ordering: list[list[int]], prob_cnot: float
     return result, fidelity
 
 
-def contour_plot(num_photons, ordering, 
-                 t_max, t_int, p_max, p_int):
+def contour_plot(num_photons: int, ordering: list[list[int]], 
+                 t_max: float, t_int: float, p_max: float, p_int: float) -> None:
+    """
+    Generates a contour plot of the gate timing ratio, probability for CNOT,
+    and fidelity,
+
+    Parameters
+    ----------
+    num_photons : int
+        Number of photons used in graph state
+    ordering : list[list[int]]
+        Graph state edgelist, index starts at 0
+    t_max : float
+        Maximum gate timing ratio
+    t_max : float
+        Interval of gate timing ratio
+    p_max : float
+        Maximum probability for CNOT
+    t_max : float
+        Interval of probability for CNOT
+    """
 
     ratios = np.round(np.arange(0, t_max+t_int, t_int), 6)
     probs = np.round(np.arange(0, p_max+p_int, p_int), 6)

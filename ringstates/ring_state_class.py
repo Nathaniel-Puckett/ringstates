@@ -9,6 +9,7 @@ from copy import deepcopy
 from math import factorial
 from photonic_circuit_solver import Stabilizer, qiskit_circuit_solver
 from random import shuffle
+from qiskit import QuantumCircuit
 
 
 class RingState:
@@ -209,7 +210,7 @@ class RingState:
         
         return G
 
-    def circuit(self, index: int):
+    def circuit(self, index: int) -> QuantumCircuit:
         """
         Returns the circuit for the ordering at index.
 
@@ -228,7 +229,7 @@ class RingState:
 
         return qc
 
-    def scatterplot(self, x_index: int, y_index: int):
+    def scatterplot(self, x_index: int, y_index: int) -> None:
         """
         Plots data from two indicies as a pyplot.
 
