@@ -11,7 +11,7 @@ from qiskit_aer.noise import NoiseModel, pauli_error
 
 def noise_analysis(num_photons: int, ordering: list[list[int]], prob_cnot: float, 
                    T_ratio: float, method: str = "density_matrix", 
-                   shots: int = 1024, timer: bool = False):
+                   shots: int = 1024, timer: bool = False) -> tuple[any, float]:
     """
     Simple error analysis for a given ordering's qiskit circuit.
 
@@ -53,9 +53,6 @@ def noise_analysis(num_photons: int, ordering: list[list[int]], prob_cnot: float
     photons = range(num_photons)
     emitters = range(num_photons, qc.num_qubits)
 
-    #sets ancilla 0 to computational 0 state
-    for emitter in emitters:
-        qc.measure(emitter, 0)
     #inverse of generation circuit
     for edge in ordering:
         qc.cz(edge[0], edge[1])
@@ -65,7 +62,7 @@ def noise_analysis(num_photons: int, ordering: list[list[int]], prob_cnot: float
         qc.save_state()
     else:
         for photon in photons:
-            qc.measure(photon, photon+1)
+            qc.measure(photon, photon) #measures qubit n to ancilla n
 
     noise_model = NoiseModel()
 
