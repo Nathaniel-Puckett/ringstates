@@ -17,7 +17,7 @@ class RingState:
     Class for working with an n ring state in the context of photonic quantum computing.
     """
 
-    def __init__(self, nodes: int, timer: bool = False):
+    def __init__(self, nodes: int, timer: bool = False) -> None:
         """
         Parameters
         ----------

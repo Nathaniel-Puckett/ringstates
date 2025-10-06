@@ -70,7 +70,7 @@ def noise_analysis(num_photons: int, ordering: list[list[int]], prob_cnot: float
     prob_single = 0.5 * (1 - (1 - 2 * prob_cnot) ** T_ratio) #probability for single qubit gates & emissions
 
     hadamard_error = pauli_error([("X", prob_single), ("I", 1 - prob_single)]) #z propagated past hadamard
-    phase_error = pauli_error([("Y", prob_single), ("I", 1 - prob_single)]) #z propagated past phase
+    phase_error = pauli_error([("Z", prob_single), ("I", 1 - prob_single)]) #z propagated past phase
     emission_cx_error = pauli_error([("IZ", prob_single), ("II", 1 - prob_single)]) #z originating on control
     emitter_cx_error = pauli_error([("IZ", prob_cnot), ("II", 1 - prob_cnot)]) #z originating on control
 
