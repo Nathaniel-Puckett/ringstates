@@ -28,7 +28,6 @@ class GraphGen:
         self.X = np.identity(self.num_photons, int)
         self.Z = nx.adjacency_matrix(state).todense()
         self.S = np.ones(self.num_photons, int)
-        print(self)
         self.rref()
 
         #Post-emitter state
@@ -341,9 +340,7 @@ class GraphGen:
         self.cnot(trm_emitter, photon, False)
         self.operations.append(["TRM", int(trm_emitter), int(photon)])
 
-        print(self)
-
-        print("TRM", trm_emitter, photon)
+        #print("TRM", trm_emitter, photon)
 
     def absorption(self, photon: int) -> None:
         """
@@ -376,26 +373,23 @@ class GraphGen:
                 for qubit in [photon, emitter]:
                     if self.X[i][qubit] == self.Z[i][qubit] == 1:
                         self.phase(qubit)
-                        print('phase')
                     if self.X[i][qubit] == 1:
                         self.hadamard(qubit)
                 self.cnot(emitter, photon)
                 break
         
-        print(self)
 
-        print("Absorption", emitter, photon)
+        #print("Absorption", emitter, photon)
 
-    def run(self):
+    def run(self) -> None:
         """
         Runs the algorithm to obtain a time reversed circuit
         """
 
-        print(self)
         self.rref()
 
         for photon in range(self.num_photons-1, -1, -1):
-            print("photon:", photon)
+            #print("photon:", photon)
             heights = self.height()
             if heights[photon] > heights[photon + 1]:
                 self.reverse_measurement(photon)
@@ -403,11 +397,9 @@ class GraphGen:
             self.absorption(photon)
             self.rref()
         
-        print(self)
         self.operations.reverse()
-        print(self.operations)
 
-    def qiskit_circuit(self):
+    def qiskit_circuit(self) -> QuantumCircuit:
         """
         Creates a qiskit circuit with the operations needed to generate the graph state
         
