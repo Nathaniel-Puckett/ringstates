@@ -10,7 +10,6 @@ from math import factorial
 from photonic_circuit_solver import Stabilizer, qiskit_circuit_solver
 from random import shuffle
 from qiskit import QuantumCircuit
-from .graph_state_generation import GraphGen
 
 
 class RingState:
@@ -18,7 +17,7 @@ class RingState:
     Class for working with an n ring state in the context of photonic quantum computing.
     """
 
-    def __init__(self, nodes: int, timer: bool = False, use_custom: bool = False) -> None:
+    def __init__(self, nodes: int, timer: bool = False) -> None:
         """
         Parameters
         ----------
@@ -26,15 +25,12 @@ class RingState:
             Number of nodes the graph state contains.
         timer : bool
             Times each method, used for optimizing, defaults to false.
-        use_custom : bool
-            Use custom implementation of graph state generation, defaults to false.
         """
 
         self.nodes = nodes
         self.orderings = list()
         self.data = list()
         self.timer = timer
-        self.use_custom = use_custom
 
     def __getitem__(self, index: int) -> list[list[int]]:
         """
@@ -136,15 +132,8 @@ class RingState:
         ordering_data : list[list]
             Nested list containing relevant data.
         """
-        if self.use_custom:
-            G = nx.Graph()
-            G.add_nodes_from(range(self.nodes))
-            G.add_edges_from(ordering)
-            state = GraphGen(G)
-            state.run()
-            qc = state.qiskit_circuit()
-        else:
-            qc = qiskit_circuit_solver(Stabilizer(edgelist=ordering))
+
+        qc = qiskit_circuit_solver(Stabilizer(edgelist=ordering))
         qcd = dict(qc.count_ops())
         ordering_data = [
             ["Index", index], 
