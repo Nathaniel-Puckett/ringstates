@@ -1,10 +1,13 @@
 import networkx as nx
 import numpy as np
-import matplotlib.pyplot as plt
 from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
 
 
 class GraphGen:
+    """
+    Class for generating graph states from an initial computational zero state
+    """
+
     def __init__(self, state: nx.Graph) -> None:
         """
         Initializes X/Z tableus as an NxN where N is the number of photons. Automatically runs the height function 
@@ -40,7 +43,6 @@ class GraphGen:
             self.Z[i][i] = 1
             self.S[i] = 1
     
-
     def __str__(self) -> str:
         """
         Determines what the stabilizers look like as Pauli strings and returns them.
@@ -67,7 +69,6 @@ class GraphGen:
 
         return stabilizers
 
-
     def add_stabilizers(self, i_add: int, i_base: int) -> None:
         """
         Combines two stabilizers
@@ -83,7 +84,6 @@ class GraphGen:
         self.X[i_base] = np.mod(np.add(self.X[i_add], self.X[i_base]), 2)
         self.Z[i_base] = np.mod(np.add(self.Z[i_add], self.Z[i_base]), 2)
 
-
     def swap_stabilizers(self, row_a: int, row_b: int) -> None:
         """
         Swaps two stabilizers
@@ -98,7 +98,6 @@ class GraphGen:
 
         self.X[[row_a, row_b]] = self.X[[row_b, row_a]]
         self.Z[[row_a, row_b]] = self.Z[[row_b, row_a]]
-
 
     def hadamard(self, qubit: int, write: bool = True) -> None:
         """
@@ -122,7 +121,6 @@ class GraphGen:
         
         if write:
             self.operations.append(["H", int(qubit)])
-    
 
     def phase(self, qubit: int, write: bool = True) -> None:
         """
@@ -144,7 +142,6 @@ class GraphGen:
         
         if write:
             self.operations.append(["P", int(qubit)])
-
 
     def cnot(self, control: int, target: int, write: bool = True) -> None:
         """
@@ -171,7 +168,6 @@ class GraphGen:
         
         if write:
             self.operations.append(["CX", int(control), int(target)])
-
 
     def rref(self) -> None:
         """
@@ -270,7 +266,6 @@ class GraphGen:
 
         self.simplify()
     
-
     def simplify(self) -> None:
         """
         Simplifies the stabilizers by adding all single pauli Z stabilizers to other stabilizers
@@ -296,7 +291,6 @@ class GraphGen:
                     if z_loc not in x_paulis:
                         self.add_stabilizers(pair[0], z_loc)
 
-
     def height(self) -> list[int]:
         """
         Calculates the heights of a given set of stabilizers
@@ -317,7 +311,6 @@ class GraphGen:
             heights.append(height)
         
         return heights
-
 
     def reverse_measurement(self, photon: int) -> None:
         """
@@ -351,7 +344,6 @@ class GraphGen:
         print(self)
 
         print("TRM", trm_emitter, photon)
-
 
     def absorption(self, photon: int) -> None:
         """
@@ -394,7 +386,6 @@ class GraphGen:
 
         print("Absorption", emitter, photon)
 
-
     def run(self):
         """
         Runs the algorithm to obtain a time reversed circuit
@@ -415,7 +406,6 @@ class GraphGen:
         print(self)
         self.operations.reverse()
         print(self.operations)
-
 
     def qiskit_circuit(self):
         """
