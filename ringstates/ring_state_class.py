@@ -6,6 +6,7 @@ import time
 
 from collections import Counter
 from copy import deepcopy
+from graphstates import GraphGen
 from math import factorial
 from photonic_circuit_solver import Stabilizer, qiskit_circuit_solver
 from random import shuffle
@@ -17,20 +18,20 @@ class RingState:
     Class for working with an n ring state in the context of photonic quantum computing.
     """
 
-    def __init__(self, nodes: int, timer: bool = False) -> None:
+    def __init__(self, nodes: int, debug: bool = False) -> None:
         """
         Parameters
         ----------
         nodes : int
             Number of nodes the graph state contains.
-        timer : bool
-            Times each method, used for optimizing, defaults to false.
+        debug : bool
+            Used for optimizing, defaults to false.
         """
 
         self.nodes = nodes
         self.orderings = list()
         self.data = list()
-        self.timer = timer
+        self.debug = debug
 
     def __getitem__(self, index: int) -> list[list[int]]:
         """
@@ -71,7 +72,7 @@ class RingState:
                 self.orderings.append(ordering)
         
         time_end = time.perf_counter()
-        print(f"Time taken (orderings): {round((time_end-time_start) * 1000, 3)} ms") if self.timer else None
+        print(f"Time taken (orderings): {round((time_end-time_start) * 1000, 3)} ms") if self.debug else None
 
     def get_random_orderings(self, num_orderings: int) -> None:
         """
@@ -102,7 +103,7 @@ class RingState:
                 self.orderings.append(ordering)
 
         time_end = time.perf_counter()
-        print(f"Time taken (orderings): {round((time_end-time_start) * 1000, 3)} ms") if self.timer else None
+        print(f"Time taken (orderings): {round((time_end-time_start) * 1000, 3)} ms") if self.debug else None
 
     def add_ordering(self, ordering: list[list[int]]) -> None:
         """
@@ -146,14 +147,9 @@ class RingState:
         
         return ordering_data
 
-    def get_lowest(self, max: int = 0) -> int:
+    def get_lowest(self) -> int:
         """ 
         Finds the ordering with the least number of CNOTs and Hadamards and the lowest depth.
-
-        Parameters
-        ----------
-        max : int
-            Maximum index to search up to, default value is 0 (all indices).
 
         Returns
         -------
@@ -164,28 +160,35 @@ class RingState:
         time_start = time.perf_counter()
 
         self.get_all_orderings() if not self.orderings else None
-        max = len(self.orderings) if not max else max
 
-        for index, ordering in enumerate(self.orderings[0:max]):
-            ord_data = self.generate_data(ordering, index)
+        #l_bound = int((2/(self.nodes - 1)) * len(self.orderings))
+        u_bound = int((2/(self.nodes - 2)) * len(self.orderings)) if self.nodes > 6 else len(self.orderings)
+
+        for index, ordering in enumerate(self.orderings[0:u_bound]):
+
+            g_state = GraphGen(self.graph(index))
             
-            if index == 0:
-                l_index = index
-                l_data = ord_data
-            else:
-                for i in range(1, 5):
-                    if ord_data[i][1] < l_data[i][1]:
-                        print(f"Previous lowest index : {l_index} | New lowest index : {index}")
-                        l_index = index
-                        l_data = ord_data
-                        break
-                    elif ord_data[i][1] > l_data[i][1]:
-                        break
+            if g_state.num_emitters <= 2:
+
+                ord_data = self.generate_data(ordering, index)
                 
-            self.data.append(ord_data)
+                if index == 0:
+                    l_index = index
+                    l_data = ord_data
+                else:
+                    for i in range(1, 5):
+                        if ord_data[i][1] < l_data[i][1]:
+                            print(f"Previous lowest index : {l_index} | New lowest index : {index}") if self.debug else None
+                            l_index = index
+                            l_data = ord_data
+                            break
+                        elif ord_data[i][1] > l_data[i][1]:
+                            break
+                    
+                self.data.append(ord_data)
         
         time_end = time.perf_counter()
-        print(f"Time taken (lowest): {round((time_end-time_start) * 1000, 3)} ms") if self.timer else None
+        print(f"Time taken (lowest): {round((time_end-time_start) * 1000, 3)} ms") if self.debug else None
 
         return l_index
 
@@ -246,7 +249,6 @@ class RingState:
 
         x_data = [int(i) for i in plot_data[:,x_index][:,1]]
         y_data = [int(i) for i in plot_data[:,y_index][:,1]]
-
         zip_data = tuple(zip(x_data, y_data))
 
         size = dict(Counter(zip_data))
