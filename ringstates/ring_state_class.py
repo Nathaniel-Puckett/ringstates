@@ -8,8 +8,9 @@ from copy import deepcopy
 from graphstates import GraphGen
 from math import factorial
 from photonic_circuit_solver import Stabilizer, qiskit_circuit_solver
-from random import shuffle
 from qiskit import QuantumCircuit
+from random import shuffle
+from tqdm import tqdm
 
 
 class RingState:
@@ -67,8 +68,11 @@ class RingState:
         self.orderings = list()
 
         permutations = [list(perm) for perm in iter.permutations(range(self.nodes)[1:], self.nodes-1)]
+        pbar = tqdm(total=self.maximum)
+
         for permutation in permutations:
             if permutation[0] == self.nodes-1: #reflective symmetry check 1
+                pbar.close()
                 break
             if permutation[0] > permutation[-1]: #reflective symmetry check 2
                 continue
@@ -76,6 +80,7 @@ class RingState:
             ordering = [[permutation[i], permutation[i+1]] for i in range(self.nodes-1)]
             ordering.append([permutation[-1], permutation[0]])
             self.orderings.append(ordering)
+            pbar.update(1)
 
     def get_random_orderings(self, num_orderings: int) -> None:
         """
@@ -139,7 +144,7 @@ class RingState:
 
         None if self.orderings else self.get_all_orderings()
 
-        for index, ordering in enumerate(self.orderings):
+        for index, ordering in enumerate(tqdm(self.orderings)):
             ord_data = self.generate_data(ordering, index)
             self.data.append(ord_data)
 
@@ -160,7 +165,7 @@ class RingState:
         else:
             u_bound = len(self.orderings)
 
-        for index, ordering in enumerate(self.orderings[0:u_bound]):
+        for index, ordering in enumerate(tqdm(self.orderings[0:u_bound])):
             g_state = GraphGen(self.graph(index))
             if g_state.num_emitters > 2:
                 #all values are set to 0 in order to keep scatterplot method working
@@ -180,7 +185,6 @@ class RingState:
                 l_data = ord_data
             for i in range(1, 5):
                 if ord_data[i][1] < l_data[i][1]:
-                    print(f"Previous lowest index : {l_index} | New lowest index : {index}")
                     l_index = index
                     l_data = ord_data
                     break
