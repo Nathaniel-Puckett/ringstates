@@ -1,7 +1,7 @@
 import itertools as iter
+import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-import matplotlib.pyplot as plt
 
 from collections import Counter
 from copy import deepcopy
@@ -29,9 +29,10 @@ class RingState:
         self.nodes = nodes
         self.orderings = list()
         self.data = list()
+        self.lowest = None
         self.maximum = factorial(self.nodes-1) / 2
 
-    def __getitem__(self, index: int) -> list[list[int]]:
+    def __getitem__(self, index: int) -> tuple[tuple[int]]:
         """
         Returns ordering at index.
 
@@ -42,19 +43,19 @@ class RingState:
 
         Returns
         -------
-        self.orderings[index] : list[list[int]]
+        self.orderings[index] : tuple[tuple[int]]
             Ordering at index, returns none if an ordering does not exist at the index.
         """
 
         return self.orderings[index]
     
-    def add_ordering(self, ordering: list[list[int]]) -> None:
+    def add_ordering(self, ordering: tuple[tuple[int]]) -> None:
         """
         Adds an ordering to the list of orderings
 
         Parameters
         ----------
-        ordering : list[list[int]]
+        ordering : tuple[tuple[int]]
             Node ordering to use
         """
         
@@ -67,7 +68,7 @@ class RingState:
 
         self.orderings = list()
 
-        permutations = [list(perm) for perm in iter.permutations(range(self.nodes)[1:], self.nodes-1)]
+        permutations = iter.permutations(range(self.nodes)[1:], self.nodes-1)
         pbar = tqdm(total=self.maximum)
 
         for permutation in permutations:
@@ -76,9 +77,8 @@ class RingState:
                 break
             if permutation[0] > permutation[-1]: #reflective symmetry check 2
                 continue
-            permutation.insert(0, 0)
-            ordering = [[permutation[i], permutation[i+1]] for i in range(self.nodes-1)]
-            ordering.append([permutation[-1], permutation[0]])
+            permutation = (0,) + permutation + (0,)
+            ordering = tuple((permutation[i], permutation[i+1]) for i in range(self.nodes))
             self.orderings.append(ordering)
             pbar.update(1)
 
@@ -100,40 +100,39 @@ class RingState:
         while len(self.orderings) < num_orderings:
             permutation = list(range(self.nodes)[1:])
             shuffle(permutation)
-            if permutation[0]>permutation[-1] or permutation[0]==self.nodes-1: #reflective symmetry check
+            permutation = (0,) + tuple(permutation) + (0,)
+            if permutation[1]>permutation[-2] or permutation[1]==self.nodes-1: #reflective symmetry check
                 continue
-            permutation.insert(0, 0)
-            ordering = [[permutation[i], permutation[i+1]] for i in range(self.nodes-1)]
-            ordering.append([permutation[-1], permutation[0]])
+            ordering = tuple((permutation[i], permutation[i+1]) for i in range(self.nodes))
             self.orderings.append(ordering)
 
-    def generate_data(self, ordering: list[list[int]], index: int) -> list[list]:
+    def generate_data(self, ordering: tuple[tuple[int]], index: int) -> tuple[tuple]:
         """ 
         Generates relevant data for a given ordering.
 
         Parameters
         ----------
-        ordering : list[list[int]]
+        ordering : tuple[tuple[int]]
             Node ordering to use.
         index : int
             Index of ordering.
 
         Returns
         -------
-        ordering_data : list[list]
+        ordering_data : tuple[tuple]
             Nested list containing relevant data.
         """
 
         qc = qiskit_circuit_solver(Stabilizer(edgelist=ordering))
         qcd = dict(qc.count_ops())
-        ordering_data = [
-            ["Index", index], 
-            ["# CNOT", (qcd.get('cx') - self.nodes) if qcd.get('cx') else 0], 
-            ["# Hadamard", qcd.get('h') if qcd.get('h') else 0], 
-            ["# Phase", qcd.get('s') if qcd.get('s') else 0], 
-            ["Depth", qc.depth()], 
-            ["# Emitter", qc.num_qubits - self.nodes]
-            ]
+        ordering_data = (
+            ("Index", index), 
+            ("# CNOT", (qcd.get('cx') - self.nodes) if qcd.get('cx') else 0), 
+            ("# Hadamard", qcd.get('h') if qcd.get('h') else 0), 
+            ("# Phase", qcd.get('s') if qcd.get('s') else 0), 
+            ("Depth", qc.depth()), 
+            ("# Emitter", qc.num_qubits - self.nodes)
+        )
         
         return ordering_data
     
@@ -143,6 +142,7 @@ class RingState:
         """
 
         None if self.orderings else self.get_all_orderings()
+        self.data = list()
 
         for index, ordering in enumerate(tqdm(self.orderings)):
             ord_data = self.generate_data(ordering, index)
@@ -154,11 +154,12 @@ class RingState:
 
         Returns
         -------
-        l_index : int
+        self.lowest : int
             Index of the ordering containing the least number of CNOTs, Hadamards, and depth.
         """
 
         None if self.orderings else self.get_all_orderings()
+        self.data = list()
 
         if self.nodes > 6 and len(self.orderings) == self.maximum:
             u_bound = int((2/(self.nodes - 2)) * len(self.orderings))
@@ -169,14 +170,14 @@ class RingState:
             g_state = GraphGen(self.graph(index))
             if g_state.num_emitters > 2:
                 #all values are set to 0 in order to keep scatterplot method working
-                ord_data = [
-                    ["Index", index], 
-                    ["# CNOT", 0], 
-                    ["# Hadamard", 0], 
-                    ["# Phase", 0], 
-                    ["Depth", 0], 
-                    ["# Emitter", 0]
-                    ]
+                ord_data = (
+                    ("Index", index), 
+                    ("# CNOT", 0), 
+                    ("# Hadamard", 0), 
+                    ("# Phase", 0), 
+                    ("Depth", 0), 
+                    ("# Emitter", 0)
+                )
                 self.data.append(ord_data)
                 continue
             ord_data = self.generate_data(ordering, index)
@@ -191,8 +192,9 @@ class RingState:
                 elif ord_data[i][1] > l_data[i][1]:
                     break
             self.data.append(ord_data)
+        self.lowest = l_index
 
-        return l_index
+        return self.lowest
 
     def graph(self, index: int) -> nx.Graph:
         """
@@ -249,8 +251,8 @@ class RingState:
         plot_data = deepcopy(self.data)
         plot_data = np.array(plot_data)
 
-        x_data = [int(i) for i in plot_data[:,x_index][:,1]]
-        y_data = [int(i) for i in plot_data[:,y_index][:,1]]
+        x_data = [int(plot_data[:,x_index][:,1][i]) for i in range(len(plot_data)) if plot_data[i][4][1] != '0']
+        y_data = [int(plot_data[:,y_index][:,1][i]) for i in range(len(plot_data)) if plot_data[i][4][1] != '0']
         zip_data = tuple(zip(x_data, y_data))
 
         size = dict(Counter(zip_data))
