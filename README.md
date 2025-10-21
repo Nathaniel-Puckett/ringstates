@@ -7,6 +7,10 @@ RingStates
 
 Ring state generation and analysis
 
+GitHub Dependencies
+- https://github.com/nrmanohar/photonic_circuit_solver
+- https://github.com/Nathaniel-Puckett/graphstates
+
 ### Copyright
 
 Copyright (c) 2025, Nathaniel Puckett
