@@ -4,10 +4,8 @@ import networkx as nx
 import numpy as np
 
 from collections import Counter
-from copy import deepcopy
-from graphstates import GraphGen
 from math import factorial
-from photonic_circuit_solver import Stabilizer, qiskit_circuit_solver
+from photonic_circuit_solver import Stabilizer, qiskit_circuit_solver, num_emitters
 from qiskit import QuantumCircuit
 from random import shuffle
 from tqdm import tqdm
@@ -25,6 +23,9 @@ class RingState:
         nodes : int
             Number of nodes the graph state contains.
         """
+
+        if nodes < 3:
+            raise ValueError("Invalid number of nodes, 3 or more nodes are required to be a valid ring state.")
 
         self.nodes = nodes
         self.orderings = list()
@@ -167,8 +168,8 @@ class RingState:
             u_bound = len(self.orderings)
 
         for index, ordering in enumerate(tqdm(self.orderings[0:u_bound])):
-            g_state = GraphGen(self.graph(index))
-            if g_state.num_emitters > 2:
+            emitters = num_emitters(Stabilizer(edgelist=ordering))
+            if emitters > 2:
                 #all values are set to 0 in order to keep scatterplot method working
                 ord_data = (
                     ("Index", index), 
@@ -176,7 +177,7 @@ class RingState:
                     ("# Hadamard", 0), 
                     ("# Phase", 0), 
                     ("Depth", 0), 
-                    ("# Emitter", 0)
+                    ("# Emitter", emitters)
                 )
                 self.data.append(ord_data)
                 continue
@@ -248,11 +249,13 @@ class RingState:
             The index of the values to use for the y axis.
         """
 
-        plot_data = deepcopy(self.data)
-        plot_data = np.array(plot_data)
+        if not self.data:
+            raise ValueError('No data to plot, try generating data using get_all_data or get_lowest.')
 
-        x_data = [int(plot_data[:,x_index][:,1][i]) for i in range(len(plot_data)) if plot_data[i][4][1] != '0']
-        y_data = [int(plot_data[:,y_index][:,1][i]) for i in range(len(plot_data)) if plot_data[i][4][1] != '0']
+        plot_data = np.array(self.data)
+
+        x_data = tuple(int(val) for i, val in enumerate(plot_data[:,x_index][:,1]) if plot_data[i][4][1] != '0')
+        y_data = tuple(int(val) for i, val in enumerate(plot_data[:,y_index][:,1]) if plot_data[i][4][1] != '0')
         zip_data = tuple(zip(x_data, y_data))
 
         size = dict(Counter(zip_data))
