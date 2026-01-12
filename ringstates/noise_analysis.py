@@ -147,10 +147,12 @@ def contour_plot(num_photons: int, ordering: list[list[int]],
             result, fidelity = noise_analysis(num_photons, ordering, p, t)
             fidelities.append(round(fidelity, 3))
         data.append(fidelities)
+    
+    plt.rcParams['text.usetex'] = True
 
     plt.contourf(probs, ratios, data, levels=list(np.arange(0, 1.1, 0.1)))
-    plt.xlabel("Probability of CNOT Error")
-    plt.ylabel("T[Single] / T[CNOT]")
+    plt.xlabel(r"Probability of Error")
+    plt.ylabel(r"$T_{Single} / T_{CNOT}$")
     plt.title(f"Fidelities of a {num_photons} Ring State")
     plt.colorbar()
     plt.show()

@@ -96,7 +96,8 @@ class RingState:
         self.orderings = list()
 
         if num_orderings > self.maximum:
-            num_orderings = self.maximum
+            self.get_all_orderings()
+            return None
 
         while len(self.orderings) < num_orderings:
             permutation = list(range(self.nodes)[1:])
@@ -128,7 +129,7 @@ class RingState:
         qcd = dict(qc.count_ops())
         ordering_data = (
             ("Index", index), 
-            ("# CNOT", (qcd.get('cx') - self.nodes) if qcd.get('cx') else 0), 
+            ("# CNOT", (qcd.get('cx') - self.nodes)), 
             ("# Hadamard", qcd.get('h') if qcd.get('h') else 0), 
             ("# Phase", qcd.get('s') if qcd.get('s') else 0), 
             ("Depth", qc.depth()), 
@@ -163,7 +164,7 @@ class RingState:
         self.data = list()
 
         if self.nodes > 6 and len(self.orderings) == self.maximum:
-            u_bound = int((2/(self.nodes - 2)) * len(self.orderings))
+            u_bound = int((2/(self.nodes - 2)) * self.maximum)
         else:
             u_bound = len(self.orderings)
 
