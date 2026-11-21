@@ -5,7 +5,7 @@ Unit and regression test for the ringstates package.
 # Import package, test suite, and other packages as needed
 import sys
 import pytest
-import ringstates
+from ringstates import RingState
 
 
 def test_ringstates_imported():
@@ -14,7 +14,7 @@ def test_ringstates_imported():
 
 def test_ringstate_class():
 
-    rs = ringstates.RingState(6)
+    rs = RingState(6)
     rs.get_random_orderings(10)
 
     assert len(rs.orderings) == 10

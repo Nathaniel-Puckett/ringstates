@@ -4,11 +4,78 @@ import networkx as nx
 import numpy as np
 
 from collections import Counter
-from math import factorial
+from concurrent.futures import ProcessPoolExecutor
+from math import factorial, floor
+from os import cpu_count
 from photonic_circuit_solver import Stabilizer, qiskit_circuit_solver, num_emitters
 from qiskit import QuantumCircuit
 from random import shuffle
 from tqdm import tqdm
+
+
+def best_state_heuristic(n: int) -> tuple[tuple]:
+    """ 
+    Heuristic for the best possible ring state in the context of the algorithm used.
+    Only applicable for n>=8.
+
+    Parameters
+    ----------
+    n : int
+        Number of nodes
+
+    Returns
+    -------
+    ordering : tuple[tuple]
+        Ordering of the best possible ring state
+    """
+    ordering = list()
+
+    ordering.append(list(range(0, floor(n/2)-1)))
+    ordering.append([n-3, n-1, n-2, n-4])
+    ordering.append(list(range(n-5, floor(n/2)-2, -1)))
+    ordering.append([0])
+
+    ordering = [element for sublist in ordering for element in sublist]
+    ordering = tuple((ordering[i], ordering[i+1]) for i in range(n))
+
+    return ordering
+
+
+def low_ordering_data(nodes: int, index: int, ordering: tuple[tuple[int]]) -> tuple[tuple]:
+    """ 
+    Generates data only for orderings with 2 emitters, used for get_lowest_multi method.
+
+    Parameters
+    ----------
+    nodes : int
+        Number of nodes
+    index : int
+        Index of ordering.
+    ordering : tuple[tuple[int]]
+        Node ordering to use.
+
+    Returns
+    -------
+    ordering_data : tuple[tuple]
+        Nested list containing relevant data.
+    """
+
+    emitters = num_emitters(Stabilizer(edgelist=ordering))
+    if emitters > 2:
+        return None
+    
+    qc = qiskit_circuit_solver(Stabilizer(edgelist=ordering))
+    qcd = dict(qc.count_ops())
+    ordering_data = (
+        ("Index", index), 
+        ("# CNOT", (qcd.get('cx') - nodes)), 
+        ("# Hadamard", qcd.get('h') if qcd.get('h') else 0), 
+        ("# Phase", qcd.get('s') if qcd.get('s') else 0), 
+        ("Depth", qc.depth()), 
+        ("# Emitter", qc.num_qubits - nodes)
+    )
+    
+    return ordering_data
 
 
 class RingState:
@@ -62,18 +129,19 @@ class RingState:
         
         self.orderings.append(ordering)
 
-    def get_all_orderings(self) -> None:
+    def get_all_orderings(self, max_num: int = 0) -> None:
         """
-        Generates all possible orderings for the ring state.
+        Generates all possible orderings for the ring state up to a maximum value.
         """
 
         self.orderings = list()
+        max_num = max_num if max_num else self.maximum
 
         permutations = iter.permutations(range(self.nodes)[1:], self.nodes-1)
-        pbar = tqdm(total=self.maximum)
+        pbar = tqdm(total=max_num)
 
         for permutation in permutations:
-            if permutation[0] == self.nodes-1: #reflective symmetry check 1
+            if permutation[0] == self.nodes-1 or len(self.orderings) == max_num: #reflective symmetry check 1
                 pbar.close()
                 break
             if permutation[0] > permutation[-1]: #reflective symmetry check 2
@@ -108,16 +176,16 @@ class RingState:
             ordering = tuple((permutation[i], permutation[i+1]) for i in range(self.nodes))
             self.orderings.append(ordering)
 
-    def generate_data(self, ordering: tuple[tuple[int]], index: int) -> tuple[tuple]:
+    def generate_data(self, index: int, ordering: tuple[tuple[int]]) -> tuple[tuple]:
         """ 
         Generates relevant data for a given ordering.
 
         Parameters
         ----------
-        ordering : tuple[tuple[int]]
-            Node ordering to use.
         index : int
             Index of ordering.
+        ordering : tuple[tuple[int]]
+            Node ordering to use.
 
         Returns
         -------
@@ -147,21 +215,21 @@ class RingState:
         self.data = list()
 
         for index, ordering in enumerate(tqdm(self.orderings)):
-            ord_data = self.generate_data(ordering, index)
+            ord_data = self.generate_data(index, ordering)
             self.data.append(ord_data)
 
-    def get_lowest(self) -> int:
+    def get_lowest(self) -> tuple[tuple]:
         """ 
         Finds the ordering with the least number of CNOTs and Hadamards and the lowest depth.
 
         Returns
         -------
-        self.lowest : int
-            Index of the ordering containing the least number of CNOTs, Hadamards, and depth.
+        lowest_data : tuple[tuple]
+            Data of the ordering containing the least number of CNOTs, Hadamards, and depth.
         """
 
         None if self.orderings else self.get_all_orderings()
-        self.data = list()
+        lowest_data = None
 
         if self.nodes > 6 and len(self.orderings) == self.maximum:
             u_bound = int((2/(self.nodes - 2)) * self.maximum)
@@ -169,34 +237,73 @@ class RingState:
             u_bound = len(self.orderings)
 
         for index, ordering in enumerate(tqdm(self.orderings[0:u_bound])):
-            emitters = num_emitters(Stabilizer(edgelist=ordering))
-            if emitters > 2:
-                #all values are set to 0 in order to keep scatterplot method working
-                ord_data = (
-                    ("Index", index), 
-                    ("# CNOT", 0), 
-                    ("# Hadamard", 0), 
-                    ("# Phase", 0), 
-                    ("Depth", 0), 
-                    ("# Emitter", emitters)
-                )
-                self.data.append(ord_data)
+            ordering_data = low_ordering_data(self.nodes, index, ordering)
+            if not ordering_data:
                 continue
-            ord_data = self.generate_data(ordering, index)
-            if index == 0:
-                l_index = index
-                l_data = ord_data
+            if not lowest_data:
+                lowest_data = ordering_data
             for i in range(1, 5):
-                if ord_data[i][1] < l_data[i][1]:
-                    l_index = index
-                    l_data = ord_data
+                if ordering_data[i][1] < lowest_data[i][1]:
+                    lowest_data = ordering_data
                     break
-                elif ord_data[i][1] > l_data[i][1]:
+                elif ordering_data[i][1] > lowest_data[i][1]:
                     break
-            self.data.append(ord_data)
-        self.lowest = l_index
 
-        return self.lowest
+        return lowest_data
+
+    def get_lowest_multi(self, workers: int = None, chunk_size: int = None) -> tuple[tuple]:
+        """ 
+        Finds the ordering with the least number of CNOTs and Hadamards and the lowest depth.
+        Multiprocessing version of get_lowest.
+
+        Parameters
+        ----------
+        workers : int
+            Number of workers to use during multiprocessing, max amount is tied to CPU cores.
+            Defaults to the total number of CPU cores.
+        chunk_size : int
+            Number of orderings to pass to each individual worker at a given time.
+            Defaults to u_bound//(cpu_count()*8)
+
+        Returns
+        -------
+        lowest_data : tuple[tuple]
+            Data of the ordering containing the least number of CNOTs, Hadamards, and depth.
+        """
+
+        if self.nodes < 9:
+            raise ValueError("Value too low (<9) to benefit from multiprocessing, use get_lowest instead")
+
+        None if self.orderings else self.get_all_orderings()
+        lowest_data = None
+
+        if self.nodes > 6 and len(self.orderings) == self.maximum:
+            u_bound = int((2/(self.nodes - 2)) * self.maximum)
+        else:
+            u_bound = len(self.orderings)
+
+        workers = workers if workers else cpu_count()
+        chunk_size = chunk_size if chunk_size else u_bound//(cpu_count()*8)
+
+        with ProcessPoolExecutor(max_workers=workers) as executor:
+            all_ordering_data = list(tqdm(
+                                    executor.map(low_ordering_data, [self.nodes]*u_bound, range(0, u_bound), self.orderings, 
+                                    chunksize=chunk_size), total = u_bound
+                                ))
+
+        for ordering_data in all_ordering_data:
+            if not ordering_data:
+                continue
+            if not lowest_data:
+                lowest_data = ordering_data
+            for i in range(1, 5):
+                if ordering_data[i][1] < lowest_data[i][1]:
+                    lowest_data = ordering_data
+                    break
+                elif ordering_data[i][1] > lowest_data[i][1]:
+                    break
+
+        return lowest_data
 
     def graph(self, index: int) -> nx.Graph:
         """
